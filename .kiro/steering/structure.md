@@ -21,6 +21,13 @@ bike-lane-project/
   demo/data/events.json       events the demo page plays back
   tests/                      pytest tests using small synthetic CSVs
   outputs/                    charts, dashboard, CSV summaries
+  app/                        "Comm Ave Lane Watch" demo app (separate from demo/)
+    backend/                  FastAPI + uvicorn API (lane status, blockages, stats, reports)
+    backend/data/             sample blockages.csv + telraam.csv the API reads
+    backend/tests/            pytest tests calling the pure functions directly
+    frontend/                 React + Vite + Recharts front end (built in a later task)
+    frontend/public/data/     static fallback JSON so the front end runs without the backend
+    README.md                 how to run the app/ backend and front end
 
 Specs: keep requirements.md, design.md and tasks.md short. No more than 5 acceptance
 criteria per requirement. Skip diagrams and long test plans.

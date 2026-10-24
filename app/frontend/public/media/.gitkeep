@@ -1,0 +1,6 @@
+# Keep this folder in git. The real replay clip (demo_clip.mov) lives here locally but is
+# gitignored (*.mov), so it is NOT committed. On GitHub Pages the clip will be absent and
+# the app falls back to a placeholder stage driven by CONFIG.videoDurationSeconds.
+#
+# To ship a playable clip to Pages, drop a small compressed demo_clip.mp4 here and point
+# CONFIG.videoSrc at it (mp4 plays reliably in browsers; .mov often does not).

@@ -1,0 +1,6 @@
+# app/ "Comm Ave Lane Watch" backend dependencies.
+# Pinned to recent, stable releases so the student team gets reproducible installs.
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pandas==2.2.3
+pytest==8.3.4
