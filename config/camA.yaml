@@ -14,16 +14,18 @@ model:
   conf: 0.35                   # minimum detection confidence
   classes: [0, 1, 2, 3, 5, 7, 36]   # person, bicycle, car, motorcycle, bus, truck, skateboard
 
-counting_line:                 # two points across the bike lane
-  points: [[200, 400], [700, 400]]
+counting_line:                 # straight up and down across the lane, tall enough to catch riders
+  points: [[575, 385], [575, 445]]
   side_a_name: "toward Kenmore"
   side_b_name: "toward Essex"
 
-lane_polygon:                  # 4+ points outlining the bike lane on the ground
-  - [100, 700]
-  - [500, 300]
-  - [560, 300]
-  - [300, 700]
+lane_polygon:                  # along the upper edge of the lane, then back along the lower edge
+  - [847, 367]
+  - [564, 417]
+  - [274, 473]
+  - [274, 484]
+  - [574, 425]
+  - [857, 372]
 
 blockage:
   vehicle_classes: [car, truck, bus]
