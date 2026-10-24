@@ -45,6 +45,14 @@ Requirements:
 
 Acceptance: detect.py on a 2 minute test clip produces a CSV with exactly these columns, and the
 annotated MP4 plays with faces blurred.
+
+Two cameras: we have two cameras filming the same street at the same time from different
+angles. Video names include a camera ID: commave_<camID>_YYYY-MM-DD_HHMM.mp4.
+- Each camera has its own config file, config/<camID>.yaml (counting line, lane polygon).
+  detect.py and pick_points.py pick the config from the camera ID in the filename.
+- Add a "camera" column to the detections CSV, and include the camera ID in uid.
+- Never combine counts from different cameras. Each analysis uses one camera.
+The videos are already in data/raw_video/. Don't overwrite existing config files.
 ```
 
 ---
