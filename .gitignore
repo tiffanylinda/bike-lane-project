@@ -1,0 +1,17 @@
+# data and video: stay in Google Drive
+data/
+demo/media/
+*.mp4
+*.mov
+*.avi
+
+# secrets
+.env
+*.key
+
+# Python and model files
+__pycache__/
+.venv/
+*.pt
+.ipynb_checkpoints/
+.DS_Store
