@@ -1,0 +1,45 @@
+# Camera and analysis settings for the Comm Ave bike lane monitor.
+# Pixel values are PLACEHOLDERS. Replace them using:
+#   python tools/pick_points.py --video data/raw_video/<clip>.mp4
+# If the camera moves, re-pick the line and polygon.
+
+location:
+  name: "Comm Ave bike lane, Essex St to Kenmore Sq"   # replace with exact spot
+  lat: 42.3500        # replace with the camera's real position
+  lon: -71.1000
+  timezone: America/New_York
+
+model:
+  weights: yolov8n.pt          # try yolov8s.pt if detections are poor
+  conf: 0.35                   # minimum detection confidence
+  classes: [0, 1, 2, 3, 5, 7, 36]   # person, bicycle, car, motorcycle, bus, truck, skateboard
+
+counting_line:                 # two points across the bike lane
+  points: [[200, 400], [700, 400]]
+  side_a_name: "toward Kenmore"
+  side_b_name: "toward Essex"
+
+lane_polygon:                  # 4+ points outlining the bike lane on the ground
+  - [100, 700]
+  - [500, 300]
+  - [560, 300]
+  - [300, 700]
+
+blockage:
+  vehicle_classes: [car, truck, bus]
+  stopped_max_speed_px_s: 15   # slower than this counts as stopped (not just passing)
+  possible_after_s: 10         # stopped this long -> status "possible"
+  blocked_after_s: 30          # stopped this long -> status "blocked" (an alert)
+  clear_after_s: 5             # lane empty this long -> status "clear" (avoids flicker)
+  merge_gap_s: 10              # rejoin a vehicle the tracker lost and re-found
+  merge_distance_px: 60
+
+scooter:
+  min_speed_px_s: 120          # person faster than this, with no bicycle -> possible scooter
+
+validation:
+  min_telraam_uptime: 0.5      # ignore Telraam hours with less camera activity than this
+
+demo:
+  playback_speed: 1.0          # 1.0 = real time
+  alert_sound: true
