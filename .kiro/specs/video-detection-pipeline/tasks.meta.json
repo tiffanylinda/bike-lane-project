@@ -170,6 +170,111 @@
         "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
         "timestamp": 1792872442088
       }
+    ],
+    "5.1 Implement `process_video` detection and CSV assembly": [
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872536357
+      },
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872721948
+      }
+    ],
+    "5.2 Implement skip/overwrite handling in `process_video`": [
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872724765
+      },
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872870479
+      }
+    ],
+    "5.3 Implement annotated MP4 writing with face/plate blur": [
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872873249
+      },
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792873053815
+      }
+    ],
+    "5.4 Implement `main` file/folder dispatch and batch loop": [
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792873056371
+      },
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792873181568
+      }
+    ],
+    "5. Implement video/model processing in `src/detect.py`": [
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792873181633
+      }
+    ],
+    "7.1 Implement the frame exporter": [
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792873185383
+      },
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792873529675
+      }
+    ],
+    "8.1 Implement the interactive point picker": [
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792873186178
+      },
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792873530419
+      }
+    ],
+    "7. Implement `tools/export_frame.py`": [
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792873529735
+      }
+    ],
+    "8. Implement `tools/pick_points.py`": [
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792873530469
+      }
+    ],
+    "9. Create `notebooks/run_detection.ipynb`": [
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792873533552
+      },
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792873647442
+      }
     ]
   }
 }

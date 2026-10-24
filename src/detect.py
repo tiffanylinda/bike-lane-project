@@ -548,3 +548,612 @@ def parse_args(argv):
     # argparse turns "--config-dir" into args.config_dir, "--max-seconds" into args.max_seconds,
     # and "--save-annotated" into args.save_annotated (dashes become underscores).
     return parser.parse_args(argv)
+
+
+# How often, in wall-clock seconds, we print a progress line while decoding a video.
+# We throttle with time.monotonic() (not a frame counter) so the cadence is steady no
+# matter how fast or slow the model runs on a given machine (Req 7.1).
+PROGRESS_INTERVAL_SECONDS = 5.0
+
+
+def process_video(video_path, output_dir, cfg, camera_id, start, *, stride, max_seconds, overwrite, save_annotated):
+    """Score one video and write its per-video detections CSV. Returns a summary dict.
+
+    This is the heart of the detector: it decodes a single clip, runs YOLO tracking on
+    the frames we choose to keep, turns every tracked box into one CSV row following the
+    fixed ``CSV_COLUMNS`` contract, and writes ``<output_dir>/<video_name>_detections.csv``.
+
+    PARAMETERS
+    ----------
+    - ``video_path``: the clip to process (a ``str`` or ``pathlib.Path``). Its *stem*
+      (no directory, no extension) becomes the ``video`` column and part of every uid.
+    - ``output_dir``: the folder the CSV is written into (created if absent).
+    - ``cfg``: the loaded per-camera config dict from ``load_camera_config`` — we read
+      ``cfg["model"]["weights"]`` (the YOLO weights), ``cfg["model"]["conf"]`` (the
+      confidence threshold), and ``cfg["model"]["classes"]`` (the COCO class ids to keep).
+    - ``camera_id``: the camera id parsed from the filename. It is written verbatim into
+      the ``camera`` column of EVERY row, which is how we guarantee the two cameras are
+      never combined (Req 2.2) — a video's rows all carry its own camera and no other.
+    - ``start``: the recording start time (tz-aware America/New_York) from
+      ``parse_video_name``; every row's ``time`` is computed from this plus the frame offset.
+    - ``stride`` (keyword-only, int >= 1): process every Nth frame.
+    - ``max_seconds`` (keyword-only, positive float or ``None``): cap the run to the first
+      N seconds; ``None`` means the whole clip.
+    - ``overwrite`` (keyword-only, bool): accepted here for a stable signature; the real
+      skip/overwrite branch lands in task 5.2. See the SEAM note below.
+    - ``save_annotated`` (keyword-only, bool): accepted here for a stable signature; the
+      annotated-MP4 writing lands in task 5.3. See the SEAM note below.
+
+    RETURNS a per-video summary dict with keys ``frames_processed`` (int),
+    ``total_detections`` (int), ``unique_tracks_per_class`` (dict class-name -> count of
+    distinct track ids), and ``skipped`` (bool). The same numbers are also printed as a
+    human-readable summary line (Req 7.2).
+
+    WHY the heavy imports are INSIDE this function: ultralytics (YOLO), OpenCV, and pandas
+    are slow to import and only needed once we actually decode a video. Keeping them out of
+    the module top level means importing ``src.detect`` for its pure helpers (filename
+    parsing, config loading) stays cheap and never pulls in the whole CV/ML stack. This is
+    the deliberate design noted in the module's import comments.
+
+    SKIP/OVERWRITE (Req 5.1, 5.2, 5.3): before any heavy work, if the target CSV already
+    exists and ``overwrite`` is off, this reports the named video, returns a summary with
+    ``skipped=True`` (and zero/empty counts), and leaves the existing CSV untouched. When
+    ``overwrite`` is on (or no CSV exists yet) the video is processed and any existing CSV
+    is replaced by the write below. A skip returns cleanly rather than raising, so the
+    batch loop (task 5.4) just continues to the next clip.
+
+    ANNOTATED MP4 (Req 6): when ``save_annotated`` is set, this also writes a blurred
+    annotated video to ``<output_dir>/<video_name>_annotated.mp4``. For every detection
+    written to the CSV it draws the box and the track id, and for privacy it blurs faces
+    (top 25% of a person box) and license plates (bottom 30% of a vehicle box) so a demo
+    clip can be shared without exposing identities (the steering rule: faces/plates are
+    blurred in EVERY exported video). If the MP4 cannot be written, the error names the
+    target path and the CSV is still written (Req 6.5). Without the flag, only the CSV is
+    written and no video file is ever created (Req 6.4). No GUI calls anywhere (Req 9.1).
+    """
+    # --- Heavy, lazy imports (see the WHY above) ---------------------------------
+    from ultralytics import YOLO  # the detector/tracker; loading weights is expensive.
+    import cv2  # OpenCV: decode the video frame by frame.
+    import pandas as pd  # assemble and write the CSV in the exact column order.
+
+    video_path = Path(video_path)
+    output_dir = Path(output_dir)
+    video_name = video_path.stem  # the Video_Name: no directory, no extension (Req 4 contract).
+
+    # The target CSV path. Downstream code always looks for "<video_name>_detections.csv",
+    # so this name is part of the contract, not an arbitrary choice.
+    csv_path = output_dir / f"{video_name}_detections.csv"
+
+    # --- Skip/overwrite handling (Req 5.1, 5.2, 5.3) ----------------------------
+    # WHY we check this FIRST, before loading the model or opening the video: decoding a
+    # clip and running YOLO on it is the slow, expensive part of the whole pipeline. If
+    # we already produced this video's CSV on an earlier run and the caller did NOT ask to
+    # redo it (--overwrite is off), there is nothing to gain by re-scoring it — the result
+    # would be the same file. Returning here, up front, means a finished video costs almost
+    # nothing on a re-run: we never load weights, never open the stream, never touch the
+    # existing CSV. That is exactly what lets a big batch be re-run cheaply (Req 5.1).
+    #
+    # The rule (design Property 9): process the video IFF `overwrite or not csv_path.exists()`.
+    # So we skip only when the CSV already exists AND overwrite is off. When overwrite is on
+    # (or the CSV is not there yet) we fall through and process normally; the pandas write
+    # further down already overwrites any existing file, which satisfies Req 5.2.
+    if csv_path.exists() and not overwrite:
+        # Report, by name, that THIS video was skipped so a batch log makes it obvious which
+        # clips were reused vs freshly scored. We name the CSV too so it is clear what is
+        # being kept untouched.
+        print(f"[{video_name}] skipped: detections CSV already exists, leaving it unchanged (use --overwrite to redo) -> {csv_path}")
+
+        # Return cleanly with skipped=True and zero/empty values for everything else, so the
+        # batch loop (task 5.4) can count this as a skipped video and the folder summary math
+        # stays simple. We return instead of raising so a skip never stops the batch — the
+        # loop just moves on to the next clip (Req 5.3). The summary dict keeps the SAME shape
+        # as the normal return below so main() can rely on it unconditionally.
+        return {
+            "frames_processed": 0,
+            "total_detections": 0,
+            "unique_tracks_per_class": {},
+            "skipped": True,
+        }
+
+    # We are going to process this video (either the CSV did not exist, or --overwrite is on).
+    skipped = False
+
+    # Pull the three model settings out of config. These are DECISIONS living in the YAML
+    # (weights, threshold, which classes to keep), never hard-coded here.
+    model_cfg = cfg["model"]
+    weights = model_cfg["weights"]
+    conf_threshold = model_cfg["conf"]
+    classes = model_cfg["classes"]
+
+    # Load the YOLO model ONCE for this whole video. Reloading weights per frame would be
+    # absurdly slow; one load up front is reused for every frame we track.
+    model = YOLO(weights)
+
+    # Open the clip. cv2.VideoCapture is how OpenCV decodes frames; we read fps and the
+    # total frame count straight off the stream so progress and timestamps are honest.
+    capture = cv2.VideoCapture(str(video_path))
+    try:
+        fps = capture.get(cv2.CAP_PROP_FPS)
+        # CAP_PROP_FRAME_COUNT can be a float and is occasionally unreliable; we coerce to
+        # int and clamp negatives to 0 so a bad count means "unknown total", not a crash.
+        total_frames_raw = capture.get(cv2.CAP_PROP_FRAME_COUNT)
+        total_frames = int(total_frames_raw) if total_frames_raw and total_frames_raw > 0 else 0
+
+        # Guard against a missing/zero fps. Every timestamp and the max-seconds cutoff
+        # divide by fps, so fps <= 0 (some containers report it as 0) would poison all the
+        # math. We fail loudly with a clear message rather than silently writing wrong times.
+        if not fps or fps <= 0:
+            raise ValueError(
+                f"Could not read a valid frame rate (fps) from video {video_path} "
+                f"(got {fps!r}); cannot compute frame timestamps."
+            )
+
+        rows = []  # one dict per tracked detection, in CSV_COLUMNS order.
+        frames_processed = 0  # count of frames we actually ran the model on.
+        # Per class name, the SET of distinct track ids seen — len() of each set at the end
+        # gives the "unique track count per class" the summary reports (Req 7.2).
+        unique_tracks_per_class = {}
+
+        # Progress throttle: remember when we last printed, and only print again once at
+        # least PROGRESS_INTERVAL_SECONDS of wall-clock time have passed (Req 7.1).
+        last_progress = time.monotonic()
+
+        # --- Annotated MP4 state (Req 6) ----------------------------------------
+        # We only produce an annotated video when the caller asked for it with
+        # --save-annotated; otherwise none of this runs and no .mp4 is ever created (Req 6.4).
+        # The target path follows the fixed "<video_name>_annotated.mp4" naming so a demo
+        # clip is easy to find next to its CSV.
+        annotated_path = output_dir / f"{video_name}_annotated.mp4"
+        # The cv2.VideoWriter is created LAZILY on the first frame we process, because only
+        # then do we know the real frame size (width/height from the decoded frame's shape).
+        # fps is already read above. None means "not created yet".
+        writer = None
+        # annotated_ok tracks whether the annotated video is still being written
+        # successfully. If anything goes wrong (the writer will not open, or an error is
+        # raised while drawing/writing), we flip this to False, report the target path, and
+        # keep going so the DETECTIONS CSV is never lost to a video failure (Req 6.5).
+        annotated_ok = save_annotated
+        if save_annotated:
+            # Make sure the output folder exists before the first write attempt. We also
+            # create it again before the CSV write below; doing it here keeps the writer
+            # creation self-contained.
+            output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Decode by TRUE source index i = 0, 1, 2, ... We read (or grab) EVERY frame so the
+        # true index stays aligned with the real video, but only run the model on the frames
+        # the stride + max-seconds rule selects. Keeping the true index is what lets
+        # frame_time report when each kept frame actually happened (Req 13.1, 13.2, 13.5).
+        i = 0
+        while True:
+            # Stop early once we are past the time window: frame i sits i/fps seconds in,
+            # and everything after the cutoff is also past it, so there is nothing left to
+            # keep — no point decoding the rest of a long clip (Req 3.4).
+            if max_seconds is not None and (i / fps) >= max_seconds:
+                break
+
+            if should_process_frame(i, fps, stride, max_seconds):
+                # A frame we keep: fully DECODE it (read gives us the pixels) and track.
+                ok, frame = capture.read()
+                if not ok:
+                    break  # end of stream (or an unreadable frame): stop cleanly.
+
+                # Run tracking. persist=True keeps track ids stable across frames (the same
+                # object keeps the same id). We pass the config classes and conf so the model
+                # itself only returns the classes we want at/above the threshold; verbose=False
+                # keeps ultralytics from flooding stdout and drowning our progress lines.
+                results = model.track(
+                    frame,
+                    persist=True,
+                    classes=classes,
+                    conf=conf_threshold,
+                    verbose=False,
+                )
+
+                # For the annotated video we collect, per frame, two things:
+                #  - blur_boxes: EVERY person/vehicle detection's corner box, so we can blur
+                #    faces/plates even on detections the tracker has not given an id yet.
+                #    Privacy must NOT depend on tracking (Req 6.2, 6.3).
+                #  - draw_boxes: the (corner box, label) for each detection written to the
+                #    CSV, so the drawn boxes/track-id labels match the CSV rows (Req 6.1).
+                # Both stay empty (and cheap) when save_annotated is off.
+                blur_boxes = []  # list of (cls_name, x1, y1, x2, y2)
+                draw_boxes = []  # list of (x1, y1, x2, y2, label)
+
+                # results is a list (one entry per image); we passed a single frame, so we
+                # read result[0]. A frame with no detections still returns a result with an
+                # empty boxes set, which the loop below simply skips.
+                for result in results:
+                    boxes = getattr(result, "boxes", None)
+                    if boxes is None or len(boxes) == 0:
+                        continue
+
+                    # model.names maps class id -> COCO class NAME (e.g. 0 -> "person").
+                    # We write the NAME, never the raw id, so the CSV is human-readable and
+                    # downstream code filters on names (Req 4.4).
+                    names = model.names
+
+                    # Each box carries: a track id, a class id, a confidence, and an xywh
+                    # (center x, center y, width, height) in pixels. We pull them per box.
+                    for box in boxes:
+                        class_id = int(box.cls[0])
+                        confidence = float(box.conf[0])
+
+                        # Defensive threshold filter (Req 3.3 / Property 5): we already asked
+                        # the model for conf>=threshold, but we re-check here so a row can
+                        # never slip below the configured confidence even if the model's own
+                        # filtering changes. No at-or-above detection is dropped.
+                        if confidence < conf_threshold:
+                            continue
+
+                        # xywh is center-x, center-y, width, height in PIXELS. This is exactly
+                        # the cx, cy, w, h the CSV contract wants (not corner coords).
+                        cx, cy, w, h = (float(v) for v in box.xywh[0])
+
+                        # Map the class id to its name; fall back to the raw id as a string if
+                        # the model somehow lacks the name, so we never crash on a stray class.
+                        cls_name = names.get(class_id, str(class_id)) if isinstance(names, dict) else names[class_id]
+
+                        # PRIVACY FIRST: record this detection for blurring BEFORE the track-id
+                        # check. A face or a plate must be hidden whether or not the tracker has
+                        # committed to an id yet, so we never let a missing id leak an identity
+                        # into the exported video (Req 6.2, 6.3). The corner box is derived from
+                        # the xywh center/size: left = cx - w/2, top = cy - h/2, etc.
+                        if save_annotated:
+                            x1 = cx - w / 2
+                            y1 = cy - h / 2
+                            x2 = cx + w / 2
+                            y2 = cy + h / 2
+                            blur_boxes.append((cls_name, x1, y1, x2, y2))
+
+                        # A box without a track id (the tracker has not committed to one yet)
+                        # is not a stable tracked detection, so it is not written to the CSV and
+                        # gets no drawn box/label — every CSV row must have a real integer track
+                        # id for its uid to mean anything. (It was already queued for blurring
+                        # above, so privacy is preserved regardless.)
+                        if box.id is None:
+                            continue
+
+                        track_id = int(box.id[0])
+
+                        # Build the uid from video + camera + track id so it is unique across
+                        # the whole dataset (track ids repeat across clips and cameras).
+                        uid = build_uid(video_name, camera_id, track_id)
+
+                        # One row, values placed to match CSV_COLUMNS. camera is ALWAYS
+                        # camera_id (cameras never combined). time uses the TRUE index i.
+                        # Numeric fields are rounded exactly as the contract requires:
+                        # conf to 3 decimals, the box geometry to 1 decimal.
+                        rows.append(
+                            {
+                                "video": video_name,
+                                "camera": camera_id,
+                                "time": frame_time(start, i, fps),
+                                "frame": i,
+                                "track_id": track_id,
+                                "uid": uid,
+                                "cls": cls_name,
+                                "conf": round(confidence, 3),
+                                "cx": round(cx, 1),
+                                "cy": round(cy, 1),
+                                "w": round(w, 1),
+                                "h": round(h, 1),
+                            }
+                        )
+
+                        # Queue the drawn box + label for the annotated video. We draw the box
+                        # in CORNER coords (same derivation as the blur box) and label it with
+                        # the track id (and class for readability) so the picture matches the
+                        # CSV rows (Req 6.1).
+                        if save_annotated:
+                            x1 = cx - w / 2
+                            y1 = cy - h / 2
+                            x2 = cx + w / 2
+                            y2 = cy + h / 2
+                            draw_boxes.append((x1, y1, x2, y2, f"{cls_name} #{track_id}"))
+
+                        # Track this id under its class name for the unique-per-class summary.
+                        unique_tracks_per_class.setdefault(cls_name, set()).add(track_id)
+
+                # --- Annotated MP4 writing (Req 6.1, 6.2, 6.3, 6.5) --------------
+                # Everything below is guarded by save_annotated AND annotated_ok, so when the
+                # flag is off we write nothing (Req 6.4), and once a video failure has been
+                # reported we stop trying but keep decoding so the CSV still completes (Req 6.5).
+                if save_annotated and annotated_ok:
+                    try:
+                        # Lazily create the writer on the first processed frame, now that we
+                        # know the real frame size from the decoded frame's shape (rows, cols).
+                        # mp4v is a widely-playable fourcc for .mp4 output.
+                        if writer is None:
+                            frame_height, frame_width = frame.shape[0], frame.shape[1]
+                            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+                            writer = cv2.VideoWriter(str(annotated_path), fourcc, fps, (frame_width, frame_height))
+                            # VideoWriter does not raise when it fails to open; it returns an
+                            # object whose isOpened() is False. Treat that as a write failure so
+                            # we degrade gracefully instead of silently producing an empty file.
+                            if not writer.isOpened():
+                                raise IOError(f"cv2.VideoWriter could not open {annotated_path}")
+
+                        # Work on a COPY so our boxes/labels/blur never alter the frame the
+                        # model saw (not that we reuse it, but it keeps intent clear).
+                        annotated = frame.copy()
+                        annotated_h, annotated_w = annotated.shape[0], annotated.shape[1]
+
+                        # BLUR FIRST, DRAW SECOND. We blur the privacy sub-regions before
+                        # drawing boxes/labels so the blurred pixels (faces/plates) are what
+                        # ends up UNDER the drawn box — the box outline sits on top of an
+                        # already-anonymized region, so an identity can never show through.
+                        for cls_name, bx1, by1, bx2, by2 in blur_boxes:
+                            # Pick the right privacy sub-rectangle for this class: top 25% of a
+                            # person (the face), bottom 30% of a vehicle (the plate), or None
+                            # for classes we do not blur.
+                            region = blur_region_for_class(cls_name, bx1, by1, bx2, by2)
+                            if region is None:
+                                continue
+                            rx1, ry1, rx2, ry2 = region
+                            # Clamp to the frame bounds so slicing can never run off the image
+                            # (a box can sit partly outside the frame edges).
+                            rx1 = max(0, min(int(rx1), annotated_w))
+                            rx2 = max(0, min(int(rx2), annotated_w))
+                            ry1 = max(0, min(int(ry1), annotated_h))
+                            ry2 = max(0, min(int(ry2), annotated_h))
+                            if rx2 <= rx1 or ry2 <= ry1:
+                                continue  # empty region after clamping: nothing to blur.
+                            sub = annotated[ry1:ry2, rx1:rx2]
+                            # A strong Gaussian blur over the sub-region hides the detail. We
+                            # size the kernel to the region (odd, >= 3) so small and large boxes
+                            # are both effectively anonymized.
+                            kx = max(3, (rx2 - rx1) // 2 * 2 + 1)
+                            ky = max(3, (ry2 - ry1) // 2 * 2 + 1)
+                            annotated[ry1:ry2, rx1:rx2] = cv2.GaussianBlur(sub, (kx, ky), 0)
+
+                        # Now draw the tracked boxes + track-id labels ON TOP of the (already
+                        # blurred) frame, so the annotations match the CSV rows (Req 6.1).
+                        for dx1, dy1, dx2, dy2, label in draw_boxes:
+                            px1 = max(0, min(int(round(dx1)), annotated_w))
+                            py1 = max(0, min(int(round(dy1)), annotated_h))
+                            px2 = max(0, min(int(round(dx2)), annotated_w))
+                            py2 = max(0, min(int(round(dy2)), annotated_h))
+                            cv2.rectangle(annotated, (px1, py1), (px2, py2), (0, 255, 0), 2)
+                            # Put the label just above the box (or just below the top edge if
+                            # the box hugs the top of the frame) so it stays readable.
+                            text_y = py1 - 6 if py1 - 6 > 6 else py1 + 16
+                            cv2.putText(annotated, label, (px1, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1, cv2.LINE_AA)
+
+                        writer.write(annotated)
+                    except Exception as annotate_error:
+                        # Degrade gracefully (Req 6.5): report the target MP4 path by name, stop
+                        # trying to write the video, but DO NOT re-raise — the detections CSV
+                        # below must still be written and the normal summary returned.
+                        print(
+                            f"[{video_name}] warning: could not write annotated video -> {annotated_path}: {annotate_error}",
+                            file=sys.stderr,
+                        )
+                        annotated_ok = False
+                        # Release a half-open writer so we do not leak the handle.
+                        if writer is not None:
+                            writer.release()
+                            writer = None
+
+                frames_processed += 1
+
+                # Throttled progress line: at most once every PROGRESS_INTERVAL_SECONDS.
+                now = time.monotonic()
+                if now - last_progress >= PROGRESS_INTERVAL_SECONDS:
+                    total_label = total_frames if total_frames else "?"
+                    print(f"[{video_name}] processed {frames_processed} frames (at true frame {i} / {total_label})")
+                    last_progress = now
+            else:
+                # A frame we are NOT keeping: GRAB it (advance the decoder) without the cost
+                # of fully decoding the pixels. This keeps the true index i aligned with the
+                # real stream so skipped-over frames do not shift later timestamps.
+                if not capture.grab():
+                    break  # no more frames to advance past: end of stream.
+
+            i += 1
+    finally:
+        # Always release the capture so the file handle / decoder is freed even if an
+        # error bubbled up mid-decode.
+        capture.release()
+        # Release the annotated-video writer too (if one was created), so the .mp4 is
+        # flushed/finalized and its handle freed even when an error bubbled up mid-decode.
+        # `writer` is defined before the loop whenever we reached it; guard with locals()
+        # in case an early error (e.g. bad fps) happened before it was set.
+        if "writer" in locals() and writer is not None:
+            writer.release()
+
+    # Make sure the output folder exists before writing (no assumption that a local data/
+    # dir is present — we create the target folder ourselves).
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Build the DataFrame with an EXPLICIT columns=CSV_COLUMNS so the header is always the
+    # 12-column contract in the right order, even when there are zero rows (an empty clip
+    # still produces a valid, correctly-headed CSV). index=False keeps pandas' row numbers
+    # out of the file. This is the one write of the detections CSV for this video.
+    frame_df = pd.DataFrame(rows, columns=CSV_COLUMNS)
+    frame_df.to_csv(csv_path, index=False)
+
+    # Collapse the per-class sets of track ids into plain counts for the summary/return.
+    unique_counts = {cls_name: len(ids) for cls_name, ids in unique_tracks_per_class.items()}
+    total_detections = len(rows)
+
+    # Human-readable per-video summary (Req 7.2): what we processed and found.
+    print(
+        f"[{video_name}] done: {frames_processed} frames processed, "
+        f"{total_detections} detections, unique tracks per class: {unique_counts} "
+        f"-> {csv_path}"
+    )
+
+    # The machine-readable summary the batch loop (task 5.4) will aggregate. skipped is
+    # False here; task 5.2 sets it True on the skip path.
+    return {
+        "frames_processed": frames_processed,
+        "total_detections": total_detections,
+        "unique_tracks_per_class": unique_counts,
+        "skipped": skipped,
+    }
+
+
+def main(argv=None):
+    """Dispatch a file or folder of videos, score each one, and return a process exit code.
+
+    This is the detector's top-level entry point: it ties the pure helpers and
+    ``process_video`` together into a single run. It takes ``argv`` — the command-line
+    tokens WITHOUT the program name (exactly what ``sys.argv[1:]`` gives). When ``argv``
+    is ``None`` we fall back to ``sys.argv[1:]`` so the real CLI works, while tests can
+    still drive ``main`` with an explicit list and never touch the real process args.
+
+    RETURNS an int process exit code: ``0`` when the run completed (even if some videos
+    were skipped or individually errored and were reported), and non-zero ONLY for the
+    whole-run stop conditions below.
+
+    TWO ERROR POLICIES (see design "Error Handling"):
+
+    - **Report-and-STOP (non-zero exit, nothing written):** a missing ``--input`` path.
+      There is simply nothing to do — we cannot invent videos to score — so we name the
+      missing path on stderr and bail out before creating any output. (Bad ``--stride`` /
+      ``--max-seconds`` are the same kind of whole-run error, but argparse already caught
+      those inside ``parse_args`` and exited non-zero before we ever get here.)
+
+    - **Report-and-CONTINUE (exit 0, batch keeps going):** a single video that will not
+      parse, has no config, is missing a config field, or cannot be decoded. WHY continue:
+      detection runs are long overnight batches over a folder of clips. If one corrupt or
+      mis-named file killed the whole run, you would lose a night's work to a single bad
+      clip. Instead we name the offending file/path/field, skip just that one video, and
+      move on — so the other 99 clips still get their CSVs.
+    """
+    # Default to the real process args when called as a script; take the explicit list
+    # when a test (or any caller) passes one. This is the same testability trick parse_args
+    # uses — the CLI can be exercised without launching a process.
+    if argv is None:
+        argv = sys.argv[1:]
+
+    # parse_args validates --stride / --max-seconds via their type= functions; an invalid
+    # value makes argparse print an error naming it and exit non-zero on its own, before
+    # this returns. So by the time we have args, the numeric options are known-good.
+    args = parse_args(argv)
+
+    input_path = Path(args.input)
+    output_dir = Path(args.output)
+
+    # --- Report-and-STOP: a missing --input path (Req 1.4) ----------------------
+    # If the path we were told to read does not exist, there is nothing to process. We
+    # name the missing path on stderr (so the fix — correct the path — is obvious) and
+    # return non-zero WITHOUT creating the output folder or writing anything. This is the
+    # whole-run stop: a missing input is a user/CLI mistake, not a per-video hiccup.
+    if not input_path.exists():
+        print(f"error: --input path does not exist: {input_path}", file=sys.stderr)
+        return 1
+
+    # --- Resolve the batch: one file, or every .mp4 directly in a folder (Req 1.1, 1.2) --
+    if input_path.is_dir():
+        # Folder mode: every file with a .mp4 extension DIRECTLY inside the folder, NOT
+        # recursive (Req 1.2). We match the suffix case-insensitively (".MP4" counts too)
+        # and sort the result so a batch processes clips in a stable, predictable order.
+        is_folder = True
+        videos = sorted(
+            child
+            for child in input_path.iterdir()
+            if child.is_file() and child.suffix.lower() == ".mp4"
+        )
+    else:
+        # File mode: the batch is just the single file we were handed (Req 1.1).
+        is_folder = False
+        videos = [input_path]
+
+    # Create the output folder up front if it is missing (Req 1.3). process_video also
+    # ensures it before writing, but making it here means an empty folder run (no .mp4s)
+    # still leaves the destination ready, and we never assume a local data/ dir exists.
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Batch tallies for the final folder summary (Req 7.3):
+    #  - processed: videos that were scored and got a fresh CSV.
+    #  - skipped:   videos left untouched because their CSV already existed (--overwrite off).
+    #  - errored:   videos reported-and-skipped for a bad name/config/decode. These are
+    #               NEITHER cleanly processed NOR "skipped due to an existing CSV", so we
+    #               count them on their own so the summary math stays honest.
+    videos_processed = 0
+    videos_skipped = 0
+    videos_errored = 0
+
+    for video in videos:
+        # Each video runs inside its own try/except so ONE bad clip never stops the batch
+        # (report-and-continue, Req 1.5, 2.3, 2.4, 2.5, 5.3). Every except arm names the
+        # offending file/path/field on stderr and then falls through to the next clip.
+        try:
+            # Parse the camera id + recording start out of the filename. A name that does
+            # not fit the commave_<camID>_YYYY-MM-DD_HHMM pattern raises ValueError (Req 2.3).
+            camera_id, start = parse_video_name(video)
+
+            # Load that camera's config. A missing file raises FileNotFoundError naming the
+            # expected path (Req 2.4); a missing weights/conf/classes field raises KeyError
+            # naming the field and the config path (Req 2.5).
+            cfg = load_camera_config(args.config_dir, camera_id)
+
+            # Score the clip. process_video handles skip/overwrite, the CSV write, and the
+            # optional annotated MP4, and returns a summary whose "skipped" flag tells us
+            # whether an existing CSV was left in place.
+            summary = process_video(
+                video,
+                args.output,
+                cfg,
+                camera_id,
+                start,
+                stride=args.stride,
+                max_seconds=args.max_seconds,
+                overwrite=args.overwrite,
+                save_annotated=args.save_annotated,
+            )
+
+            # Count this clip as skipped (existing CSV kept) or freshly processed, using the
+            # summary's own flag so the tally always matches what process_video actually did.
+            if summary.get("skipped"):
+                videos_skipped += 1
+            else:
+                videos_processed += 1
+
+        except ValueError as exc:
+            # Two report-and-continue cases land here:
+            #  - an unparseable filename (parse_video_name, Req 2.3), and
+            #  - an unreadable/undecodable video (process_video raises ValueError when it
+            #    cannot read a valid fps, which also stands in for any decode failure, Req 1.5).
+            # Both name the offending file in their message; we print it and skip this clip.
+            print(f"error: skipping {video}: {exc}", file=sys.stderr)
+            videos_errored += 1
+        except FileNotFoundError as exc:
+            # The camera config for this clip's camId is missing (Req 2.4). The message
+            # already names the expected config path. Skip and continue.
+            print(f"error: skipping {video}: {exc}", file=sys.stderr)
+            videos_errored += 1
+        except KeyError as exc:
+            # The config loaded but is missing a required model.<field> (Req 2.5). The
+            # KeyError message names both the field and the config path. Skip and continue.
+            print(f"error: skipping {video}: {exc}", file=sys.stderr)
+            videos_errored += 1
+        except Exception as exc:
+            # Any other failure while opening/decoding/scoring one clip (e.g. an OpenCV
+            # error) is still just one bad video (Req 1.5) — report it by name and keep the
+            # batch alive rather than letting an unexpected error take down the whole run.
+            print(f"error: skipping {video}: {exc}", file=sys.stderr)
+            videos_errored += 1
+
+    # --- Final folder summary (Req 7.3) -----------------------------------------
+    # Only meaningful for a folder run: print how many clips were processed vs skipped
+    # (and, as a nicety, how many errored out and were skipped). A single-file run does
+    # not need a folder-level tally, so we keep stdout quiet there.
+    if is_folder:
+        print(
+            f"folder summary: {videos_processed} processed, "
+            f"{videos_skipped} skipped, {videos_errored} errored"
+        )
+
+    # The batch completed. Per the design's Error Handling, a completed batch exits 0 even
+    # when some videos were skipped or individually errored and were reported — the only
+    # non-zero exits are the whole-run stop conditions handled above (missing --input, and
+    # the bad --stride/--max-seconds that argparse already stopped on).
+    return 0
+
+
+if __name__ == "__main__":
+    # raise SystemExit(main()) makes the process exit code equal main()'s return value, so
+    # the shell/Colab sees 0 on a completed run and non-zero on a whole-run stop.
+    raise SystemExit(main())

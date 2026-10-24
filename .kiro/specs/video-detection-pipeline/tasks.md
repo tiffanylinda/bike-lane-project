@@ -96,8 +96,8 @@ model inference is verified manually on a short clip during the Colab run.
 - [ ] 4. Checkpoint - Ensure all helper tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 5. Implement video/model processing in `src/detect.py`
-  - [ ] 5.1 Implement `process_video` detection and CSV assembly
+- [x] 5. Implement video/model processing in `src/detect.py`
+  - [x] 5.1 Implement `process_video` detection and CSV assembly
     - Run ultralytics YOLO `model.track(..., persist=True, classes=cfg_classes, conf=cfg_conf,
       verbose=False)` with the config weights; iterate frames by true index applying the
       stride + max-seconds selection from task 2.5; discard below-threshold detections; build one
@@ -107,19 +107,19 @@ model inference is verified manually on a short clip during the Colab run.
       least every 5 seconds (`time.monotonic()`) and return a per-video summary dict.
     - _Requirements: 2.2, 3.1, 3.2, 3.3, 3.4, 4.1, 4.2, 4.3, 4.4, 4.5, 7.1, 7.2, 13.1, 13.2, 13.5_
 
-  - [ ] 5.2 Implement skip/overwrite handling in `process_video`
+  - [x] 5.2 Implement skip/overwrite handling in `process_video`
     - When the target CSV exists and `--overwrite` is off, skip and report the named video; else
       process and replace. Reflect the skip in the returned summary.
     - _Requirements: 5.1, 5.2, 5.3_
 
-  - [ ] 5.3 Implement annotated MP4 writing with face/plate blur
+  - [x] 5.3 Implement annotated MP4 writing with face/plate blur
     - When `--save-annotated` is set, draw each written detection's box and track ID and blur the
       face/plate sub-regions from task 2.6 with `cv2.GaussianBlur`, writing an `_annotated.mp4` via
       `cv2.VideoWriter`; if the MP4 cannot be written, report the target path and still write the
       CSV; when the flag is off, write only the CSV. No GUI calls anywhere in the detector path.
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 9.1_
 
-  - [ ] 5.4 Implement `main` file/folder dispatch and batch loop
+  - [x] 5.4 Implement `main` file/folder dispatch and batch loop
     - Resolve `--input` as a single `.mp4` or a folder of `.mp4` files (non-recursive); create the
       Output_Folder if absent without assuming a local `data/`; error-and-stop on a missing
       `--input` path; for each video, report-and-continue on undecodable video, unparseable
@@ -136,8 +136,8 @@ model inference is verified manually on a short clip during the Colab run.
 - [ ] 6. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 7. Implement `tools/export_frame.py`
-  - [ ] 7.1 Implement the frame exporter
+- [x] 7. Implement `tools/export_frame.py`
+  - [x] 7.1 Implement the frame exporter
     - Add a docstring and argparse CLI (`--video`, `--output`). Read the first frame via
       `cv2.VideoCapture.read()`; when `--output` names a folder, write `<Video_Name>.png` into it,
       else treat it as the PNG path; create the output folder if absent; error naming the path and
@@ -149,8 +149,8 @@ model inference is verified manually on a short clip during the Colab run.
       (pure path logic, no real video).
     - _Requirements: 11.2_
 
-- [ ] 8. Implement `tools/pick_points.py`
-  - [ ] 8.1 Implement the interactive point picker
+- [x] 8. Implement `tools/pick_points.py`
+  - [x] 8.1 Implement the interactive point picker
     - Add a docstring and argparse CLI requiring exactly one of `--video`/`--image`. Add a display
       guard that stops with an error when no interactive display is available. Load the base image
       (first video frame or image), erroring by path when unreadable. Collect exactly 2
@@ -167,7 +167,7 @@ model inference is verified manually on a short clip during the Colab run.
       polygon points (pure logic, no GUI).
     - _Requirements: 8.3, 8.4_
 
-- [ ] 9. Create `notebooks/run_detection.ipynb`
+- [x] 9. Create `notebooks/run_detection.ipynb`
   - Ordered cells: mount Google Drive, clone/copy the repo into the runtime,
     `!pip install -r requirements.txt`, export frames with `tools/export_frame.py` before
     detection, then run `src/detect.py` for camA in one cell and camB in a separate cell (each with
