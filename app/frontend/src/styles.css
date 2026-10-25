@@ -1,0 +1,469 @@
+/* styles.css — dark theme for the Comm Ave replay demo. Plain CSS, no UI library.
+   Status colors are CSS variables so green/amber/red are defined in ONE place. */
+
+:root {
+  /* Status palette (green = lane open/clear). */
+  --clear: #22c55e;
+  --possible: #f59e0b;
+  --blocked: #ef4444;
+
+  /* Dark theme surfaces + text. */
+  --bg: #0f1115;
+  --surface: #171a21;
+  --surface-2: #1f2430;
+  --border: #2a3040;
+  --text: #e8eaed;
+  --text-dim: #9aa3b2;
+
+  --radius: 12px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+}
+
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* ---------- Header ---------- */
+.header {
+  margin-bottom: 16px;
+}
+.header__title {
+  margin: 0;
+  font-size: 1.6rem;
+}
+.header__subtitle {
+  margin: 4px 0 0;
+  color: var(--text-dim);
+  font-size: 0.95rem;
+}
+
+/* ---------- Sample-data warning ---------- */
+.sample-warning {
+  background: #3a2a0a;
+  border: 1px solid #a16207;
+  color: #fde68a;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+
+.loading {
+  color: var(--text-dim);
+  padding: 40px 0;
+}
+
+/* ---------- Layout: 3 columns, stacks on narrow screens ---------- */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 340px 220px;
+  gap: 20px;
+  align-items: start;
+}
+/* Phone-width responsive: single column stack. */
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Video panel ---------- */
+.video-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+}
+.video-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.video-el {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+.video-placeholder {
+  text-align: center;
+  color: var(--text-dim);
+  padding: 20px;
+}
+.video-placeholder__title {
+  font-size: 1.1rem;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.video-placeholder__hint {
+  font-size: 0.85rem;
+}
+
+/* Controls row */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.btn {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.btn:hover {
+  border-color: #3b4458;
+}
+.btn--active {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+.controls__speed {
+  display: flex;
+  gap: 4px;
+}
+.btn--speed {
+  min-width: 40px;
+}
+.controls__time {
+  margin-left: auto;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Timeline */
+.timeline {
+  position: relative;
+  height: 16px;
+  margin-top: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.timeline__marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  opacity: 0.85;
+}
+.timeline__marker--possible {
+  background: var(--possible);
+}
+.timeline__marker--blocked {
+  background: var(--blocked);
+}
+.timeline__progress {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px 0 0 8px;
+}
+.timeline__playhead {
+  position: absolute;
+  top: -3px;
+  width: 3px;
+  height: 22px;
+  background: #fff;
+  border-radius: 2px;
+  transform: translateX(-1px);
+}
+
+/* ---------- Phone ---------- */
+.phone {
+  display: flex;
+  justify-content: center;
+}
+.phone__frame {
+  position: relative;
+  width: 320px;
+  max-width: 100%;
+  background: #0b0d12;
+  border: 6px solid #0b0d12;
+  border-radius: 28px;
+  box-shadow: 0 0 0 2px var(--border);
+  overflow: hidden;
+}
+.phone__content {
+  padding: 16px;
+}
+.phone__heading {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+.phone__location {
+  font-size: 0.85rem;
+  color: var(--text);
+  margin: 2px 0 12px;
+}
+
+/* ---------- Notification banner ----------
+   BUG FIX: the wrapper reserves vertical space (max-height animates from 0) so the banner
+   PUSHES the content below it down instead of overlapping the heading. The banner itself
+   has a SOLID background (no transparency), so even if layout shifted it would never show
+   text underneath. */
+.notification-wrap {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.25s ease;
+}
+.notification-wrap--visible {
+  max-height: 64px; /* reserve room while visible -> content slides DOWN */
+}
+.notification-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  color: #fff;
+  font-size: 0.85rem;
+  /* Solid, opaque backgrounds per level (no rgba transparency). */
+  background: #334155;
+}
+.notification-banner--clear {
+  background: #166534;
+}
+.notification-banner--possible {
+  background: #92610a;
+}
+.notification-banner--blocked {
+  background: #991b1b;
+}
+.notification-banner__msg {
+  line-height: 1.2;
+}
+
+/* ---------- Status card ---------- */
+.status-card {
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+  color: #0b0d12;
+}
+.status-card--clear {
+  background: var(--clear);
+}
+.status-card--possible {
+  background: var(--possible);
+}
+.status-card--blocked {
+  background: var(--blocked);
+  color: #fff;
+}
+.status-card__title {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+.status-card__subtitle {
+  font-size: 0.9rem;
+  margin-top: 4px;
+}
+.status-card__timer {
+  margin-top: 8px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Reroute card ---------- */
+.reroute-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.reroute-card__name {
+  font-weight: 600;
+}
+.reroute-card__extra {
+  color: var(--possible);
+  font-size: 0.85rem;
+  margin: 2px 0;
+}
+.reroute-card__desc {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+/* ---------- Shared status dot ---------- */
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex: 0 0 auto;
+}
+.dot--clear {
+  background: var(--clear);
+}
+.dot--possible {
+  background: var(--possible);
+}
+.dot--blocked {
+  background: var(--blocked);
+}
+
+/* ---------- Recent alerts ---------- */
+.recent-alerts {
+  margin-bottom: 12px;
+}
+.recent-alerts__heading,
+.crash-history__heading {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.recent-alerts__empty {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+.recent-alerts__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.recent-alerts__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 0.85rem;
+}
+.recent-alerts__msg {
+  flex: 1;
+}
+.recent-alerts__time {
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Bike counter ---------- */
+.bike-counter {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+.bike-counter__num {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--clear);
+}
+.bike-counter__label {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+/* ---------- Crash history ---------- */
+.crash-history__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.crash-history__row {
+  display: flex;
+  gap: 8px;
+  font-size: 0.78rem;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+.crash-history__row:last-child {
+  border-bottom: none;
+}
+.crash-history__date {
+  color: var(--text-dim);
+  flex: 0 0 72px;
+}
+.crash-history__type {
+  flex: 1;
+}
+.crash-history__sev {
+  color: var(--text-dim);
+}
+
+/* ---------- Lock-screen widget ---------- */
+.lockscreen__label {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.lockscreen__phone {
+  background: linear-gradient(160deg, #1b2330, #0b0d12);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 18px 14px;
+  text-align: center;
+}
+.lockscreen__clock {
+  font-size: 2.2rem;
+  font-weight: 300;
+}
+.lockscreen__date {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  margin-bottom: 14px;
+}
+.lockscreen__widget {
+  border-radius: 14px;
+  padding: 12px;
+  text-align: left;
+  background: var(--surface-2);
+  border-left: 4px solid var(--clear);
+}
+.lockscreen__widget--clear {
+  border-left-color: var(--clear);
+}
+.lockscreen__widget--possible {
+  border-left-color: var(--possible);
+}
+.lockscreen__widget--blocked {
+  border-left-color: var(--blocked);
+}
+.lockscreen__widget-title {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.lockscreen__widget-status {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 2px;
+}
+.lockscreen__widget-sub {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  margin-top: 2px;
+}

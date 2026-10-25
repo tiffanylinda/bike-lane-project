@@ -2,9 +2,16 @@
 
 ## Libraries
 - Python 3.10+: ultralytics (YOLO + ByteTrack), opencv-python, pandas, numpy, matplotlib,
-  plotly, requests, pyyaml, pytest. Ask before adding any other Python package.
-- Demo front end: one plain HTML file with vanilla JavaScript and CSS. No React, no build
-  step, no CDN links (it must work offline). Serve it with `python -m http.server`.
+  plotly, requests, pyyaml, pytest. fastapi and uvicorn are also approved, for the app/
+  backend only. Ask before adding any other Python package.
+- demo/ replay demo front end: one plain HTML file with vanilla JavaScript and CSS. No
+  React, no build step, no CDN links (it must work offline). Serve it with
+  `python -m http.server`. This rule applies ONLY to the existing demo/ folder.
+- app/ "Comm Ave Lane Watch" front end: React + Vite + Recharts with plain CSS (no other
+  UI library). Backend: FastAPI + uvicorn on Python 3. The app/ front end MUST run without
+  the backend: if the API is unreachable it loads the same data from static JSON files in
+  app/frontend/public/data/, so the front end can be hosted on GitHub Pages as a public
+  testing link for judges.
 
 ## Computer vision
 - Pretrained COCO YOLO, default yolov8n.pt (configurable).

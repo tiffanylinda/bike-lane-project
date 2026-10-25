@@ -1,5 +1,6 @@
 # data and video: stay in Google Drive
 data/
+data/raw_video/
 demo/media/
 *.mp4
 *.mov

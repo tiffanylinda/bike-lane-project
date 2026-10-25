@@ -1,0 +1,280 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1. Scaffold project structure and pinned setup files": [
+      {
+        "executionId": "d30a536a-902a-47cc-b7f7-afdd62a8c3ea",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792871617851
+      },
+      {
+        "executionId": "d30a536a-902a-47cc-b7f7-afdd62a8c3ea",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792871681812
+      }
+    ],
+    "2.1 Add module docstring, imports, and the CSV column contract": [
+      {
+        "executionId": "d30a536a-902a-47cc-b7f7-afdd62a8c3ea",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792871685466
+      },
+      {
+        "executionId": "cab8b42a-4d22-4c90-822f-3f2b3cb3b5a9",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792871823493
+      }
+    ],
+    "2.2 Implement `parse_video_name` and the filename regex": [
+      {
+        "executionId": "cab8b42a-4d22-4c90-822f-3f2b3cb3b5a9",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792871826477
+      },
+      {
+        "executionId": "cab8b42a-4d22-4c90-822f-3f2b3cb3b5a9",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792871904113
+      }
+    ],
+    "2.3 Implement `load_camera_config`": [
+      {
+        "executionId": "cab8b42a-4d22-4c90-822f-3f2b3cb3b5a9",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792871906380
+      },
+      {
+        "executionId": "cab8b42a-4d22-4c90-822f-3f2b3cb3b5a9",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792871987655
+      }
+    ],
+    "2.4 Implement `frame_time` and the `uid` builder": [
+      {
+        "executionId": "cab8b42a-4d22-4c90-822f-3f2b3cb3b5a9",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792871989990
+      },
+      {
+        "executionId": "cab8b42a-4d22-4c90-822f-3f2b3cb3b5a9",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872053325
+      }
+    ],
+    "2.5 Implement frame-selection index math": [
+      {
+        "executionId": "cab8b42a-4d22-4c90-822f-3f2b3cb3b5a9",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872056627
+      },
+      {
+        "executionId": "cab8b42a-4d22-4c90-822f-3f2b3cb3b5a9",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872113038
+      }
+    ],
+    "2.6 Implement blur-region geometry helper": [
+      {
+        "executionId": "cab8b42a-4d22-4c90-822f-3f2b3cb3b5a9",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872116164
+      },
+      {
+        "executionId": "cab8b42a-4d22-4c90-822f-3f2b3cb3b5a9",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872192839
+      }
+    ],
+    "2.7 Implement `parse_args` with stride/max-seconds validation": [
+      {
+        "executionId": "cab8b42a-4d22-4c90-822f-3f2b3cb3b5a9",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872195322
+      },
+      {
+        "executionId": "cab8b42a-4d22-4c90-822f-3f2b3cb3b5a9",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872302373
+      }
+    ],
+    "2. Implement pure helper functions in `src/detect.py`": [
+      {
+        "executionId": "cab8b42a-4d22-4c90-822f-3f2b3cb3b5a9",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872302435
+      }
+    ],
+    "3.1 Test filename parsing": [
+      {
+        "executionId": "cab8b42a-4d22-4c90-822f-3f2b3cb3b5a9",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872306487
+      },
+      {
+        "executionId": "cab8b42a-4d22-4c90-822f-3f2b3cb3b5a9",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872441993
+      }
+    ],
+    "3.2 Test timestamp calculation": [
+      {
+        "executionId": "cab8b42a-4d22-4c90-822f-3f2b3cb3b5a9",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872307358
+      },
+      {
+        "executionId": "cab8b42a-4d22-4c90-822f-3f2b3cb3b5a9",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872443372
+      }
+    ],
+    "3.3 Test CSV column contract and the uid builder": [
+      {
+        "executionId": "cab8b42a-4d22-4c90-822f-3f2b3cb3b5a9",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872308797
+      },
+      {
+        "executionId": "cab8b42a-4d22-4c90-822f-3f2b3cb3b5a9",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872444345
+      }
+    ],
+    "3.4 Test per-camera config selection": [
+      {
+        "executionId": "cab8b42a-4d22-4c90-822f-3f2b3cb3b5a9",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872310209
+      },
+      {
+        "executionId": "cab8b42a-4d22-4c90-822f-3f2b3cb3b5a9",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872445790
+      }
+    ],
+    "3.5 Test secondary helpers (cheap, no video/model)": [
+      {
+        "executionId": "cab8b42a-4d22-4c90-822f-3f2b3cb3b5a9",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872310939
+      },
+      {
+        "executionId": "cab8b42a-4d22-4c90-822f-3f2b3cb3b5a9",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872446517
+      }
+    ],
+    "3. Write core unit tests for the pure helpers": [
+      {
+        "executionId": "cab8b42a-4d22-4c90-822f-3f2b3cb3b5a9",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872442088
+      }
+    ],
+    "5.1 Implement `process_video` detection and CSV assembly": [
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872536357
+      },
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872721948
+      }
+    ],
+    "5.2 Implement skip/overwrite handling in `process_video`": [
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872724765
+      },
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872870479
+      }
+    ],
+    "5.3 Implement annotated MP4 writing with face/plate blur": [
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792872873249
+      },
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792873053815
+      }
+    ],
+    "5.4 Implement `main` file/folder dispatch and batch loop": [
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792873056371
+      },
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792873181568
+      }
+    ],
+    "5. Implement video/model processing in `src/detect.py`": [
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792873181633
+      }
+    ],
+    "7.1 Implement the frame exporter": [
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792873185383
+      },
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792873529675
+      }
+    ],
+    "8.1 Implement the interactive point picker": [
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792873186178
+      },
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792873530419
+      }
+    ],
+    "7. Implement `tools/export_frame.py`": [
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792873529735
+      }
+    ],
+    "8. Implement `tools/pick_points.py`": [
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792873530469
+      }
+    ],
+    "9. Create `notebooks/run_detection.ipynb`": [
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792873533552
+      },
+      {
+        "executionId": "a486d768-11c8-4aa2-9781-03ec6893b063",
+        "chatSessionId": "sess_17412c8f-601c-45b5-8425-7b0b2d8df3f8",
+        "timestamp": 1792873647442
+      }
+    ]
+  }
+}
